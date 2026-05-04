@@ -22,6 +22,9 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore script permissions
+        run: chmod +x distribution/ios/*.sh
+
       - name: Build Ryujinx.Headless.SDL2.dylib (ios-arm64)
         run: |
           dotnet publish -c Release -r ios-arm64 \
