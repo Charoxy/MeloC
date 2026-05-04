@@ -71,6 +71,12 @@ struct Switch2HomeView: View {
                     .padding(.bottom, 8)
             }
         }
+        .onAppear {
+            ryujinx.addGames()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            ryujinx.addGames()
+        }
         .onReceive(clockTimer) { now = $0 }
         .sheet(item: $sheet) { which in
             switch which {
