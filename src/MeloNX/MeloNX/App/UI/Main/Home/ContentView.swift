@@ -41,27 +41,8 @@ struct ContentView: View {
 
     @ViewBuilder
     var tabView: some View {
-        if #available(iOS 19, *), nativeSettings.disableLiquidGlass.value, UIDevice.current.userInterfaceIdiom == .phone {
-            Pre26TabView(selectedIndex: $selectedTab, items: [
-                Pre26TabItem(title: "Library", image: "gamecontroller.fill", view: { GamesListView() }),
-                
-                Pre26TabItem(title: "Settings", image: "gear", view: { SettingsViewNew() })
-            ])
-            .ignoresSafeArea(edges: .bottom)
-            .ignoresSafeArea(edges: .horizontal)
+        Switch2HomeView()
             .if(!gameHandler.showApp) { $0.hidden() }
-        } else {
-            TabView(selection: $selectedTab) {
-                GamesListView()
-                    .tabItem { Label("Library", systemImage: "gamecontroller.fill") }
-                    .tag(Tab.games)
-
-                SettingsViewNew()
-                    .tabItem { Label("Settings", systemImage: "gear") }
-                    .tag(Tab.settings)
-            }
-            .if(!gameHandler.showApp) { $0.hidden() }
-        }
     }
 
     // MARK: - Body
