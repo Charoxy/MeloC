@@ -126,16 +126,155 @@ struct SettingsViewNew: View {
     
     // i keep loosing where it is so i added MARK fr
     // MARK: - Body
-    
+
     var body: some View {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            iOSSettings
-        } else if !nativeSettingsManager.oldSettingsUI.value {
-            iPadOSSettings
+        switch2Body
+    }
+
+    var switch2Body: some View {
+        iOSNav {
+            ZStack {
+                LinearGradient(
+                    colors: [Color(red: 0.92, green: 0.92, blue: 0.93),
+                             Color(red: 0.87, green: 0.87, blue: 0.89)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
                 .ignoresSafeArea()
-                .edgesIgnoringSafeArea(.all)
-        } else {
-            iOSSettings
+
+                Group {
+                    if UIDevice.current.userInterfaceIdiom == .phone {
+                        switch2PhoneLayout
+                    } else {
+                        switch2PadLayout
+                    }
+                }
+            }
+            .navigationTitle("System Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear(perform: loadSettings)
+        }
+    }
+
+    private var switch2PadLayout: some View {
+        HStack(spacing: 0) {
+            switch2Sidebar
+                .frame(width: 240)
+
+            ScrollView(.vertical) {
+                VStack(spacing: 24) {
+                    deviceInfoCard
+                    selectedCategory.view(for: self)
+                    Spacer(minLength: 50)
+                }
+                .padding(20)
+            }
+            .scrollDismissesKeyboardIfAvailable()
+        }
+    }
+
+    private var switch2PhoneLayout: some View {
+        VStack(spacing: 0) {
+            switch2TopCategoryBar
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+            ScrollView(.vertical) {
+                VStack(spacing: 20) {
+                    deviceInfoCard
+                    selectedCategory.view(for: self)
+                    Spacer(minLength: 50)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
+            }
+            .scrollDismissesKeyboardIfAvailable()
+        }
+    }
+
+    private var switch2Sidebar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Settings")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 14)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+
+            ForEach(SettingsCategory.allCases, id: \.id) { cat in
+                switch2SidebarRow(cat)
+            }
+
+            Spacer()
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 0)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.05), radius: 6, x: 2, y: 0)
+        )
+    }
+
+    private func switch2SidebarRow(_ cat: SettingsCategory) -> some View {
+        let isSelected = selectedCategory == cat
+        return Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                selectedCategory = cat
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: cat.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : .blue)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? Color.blue : Color.blue.opacity(0.10))
+                    )
+                Text(cat.rawValue)
+                    .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .primary : Color(white: 0.3))
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? Color.blue.opacity(0.10) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var switch2TopCategoryBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(SettingsCategory.allCases, id: \.id) { cat in
+                    let isSelected = selectedCategory == cat
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            selectedCategory = cat
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: cat.icon)
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(cat.rawValue)
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundStyle(isSelected ? Color.white : Color.blue)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? Color.blue : Color.white)
+                                .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
         }
     }
     

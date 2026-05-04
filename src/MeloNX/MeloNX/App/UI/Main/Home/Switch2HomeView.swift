@@ -11,6 +11,7 @@ struct Switch2HomeView: View {
     @EnvironmentObject var gameHandler: LaunchGameHandler
     @EnvironmentObject var ryujinx: Ryujinx
     @StateObject var perGameSettings = PerGameSettingsManager.shared
+    @StateObject var nativeSettings = NativeSettingsManager.shared
     @State private var selectedDock: DockItem = .eshop
     @State private var hoveredGame: Game?
     @State private var sheet: HomeSheet?
@@ -18,6 +19,11 @@ struct Switch2HomeView: View {
     @State private var showCosmeticAlert = false
     @State private var cosmeticAlertTitle = ""
     @State private var now = Date()
+
+    private var firmwareVersion: String {
+        let v = ryujinx.fetchFirmwareVersion()
+        return v.isEmpty ? "0" : v
+    }
 
     private let clockTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -101,6 +107,8 @@ struct Switch2HomeView: View {
 
             Spacer()
 
+            optionsMenu
+
             HStack(spacing: 14) {
                 Text(timeString)
                     .font(.title3.weight(.medium))
@@ -111,6 +119,73 @@ struct Switch2HomeView: View {
                     .foregroundStyle(.green)
             }
             .foregroundStyle(.primary)
+        }
+    }
+
+    private var optionsMenu: some View {
+        Menu {
+            Button {
+                FileImporterManager.shared.importFiles(types: [.nsp, .xci, .item]) { result in
+                    ImportHandler.handleAddingGame(result: result)
+                }
+            } label: {
+                Label("Add Game", systemImage: "plus")
+            }
+
+            Button {
+                FileImporterManager.shared.importFiles(types: [.nsp, .xci, .item]) { result in
+                    ImportHandler.handleRunningGame(result: result, gameHandler: gameHandler)
+                }
+            } label: {
+                Label("Open Game", systemImage: "square.and.arrow.down")
+            }
+
+            Divider()
+
+            if firmwareVersion == "0" {
+                Button {
+                    FileImporterManager.shared.importFiles(types: [.folder, .zip]) { result in
+                        ImportHandler.handleFirmwareImport(result: result)
+                    }
+                } label: {
+                    Label("Install Firmware", systemImage: "square.and.arrow.down")
+                }
+            } else {
+                Text("Firmware: \(firmwareVersion)")
+                Button {
+                    let game = Game(
+                        containerFolder: URL(string: "none")!,
+                        fileType: .item,
+                        fileURL: URL(string: "0x0100000000001009")!,
+                        titleName: "Mii Maker",
+                        titleId: "0",
+                        developer: "Nintendo",
+                        version: firmwareVersion
+                    )
+                    gameHandler.currentGame = game
+                } label: {
+                    Label("Launch Mii Maker", systemImage: "person.crop.circle")
+                }
+            }
+
+            Divider()
+
+            Button {
+                openDocumentsFolder()
+            } label: {
+                Label("Show MeloNX Folder", systemImage: "folder")
+            }
+
+            Button {
+                sheet = .account
+            } label: {
+                Label("Profile Manager", systemImage: "person.2")
+            }
+        } label: {
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(.blue)
+                .padding(.trailing, 4)
         }
     }
 
@@ -171,13 +246,41 @@ struct Switch2HomeView: View {
                     gameTile(game: game)
                 }
 
-                ForEach(0..<max(0, 4 - ryujinx.games.count), id: \.self) { _ in
+                addGameTile
+
+                ForEach(0..<max(0, 3 - ryujinx.games.count), id: \.self) { _ in
                     emptyTile
                 }
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 8)
         }
+    }
+
+    private var addGameTile: some View {
+        Button {
+            FileImporterManager.shared.importFiles(types: [.nsp, .xci, .item]) { result in
+                ImportHandler.handleAddingGame(result: result)
+            }
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.blue.opacity(0.4), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                VStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 56, weight: .regular))
+                        .foregroundStyle(.blue)
+                    Text("Add Game")
+                        .font(.headline)
+                        .foregroundStyle(.blue)
+                }
+            }
+            .frame(width: 240, height: 240)
+            .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(.plain)
     }
 
     private func gameTile(game: Game) -> some View {
