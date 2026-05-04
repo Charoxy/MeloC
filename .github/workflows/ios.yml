@@ -15,8 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 16
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Show available Xcodes and SDKs
+        run: |
+          ls /Applications/ | grep -i xcode || true
+          xcode-select -p
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Download iOS device platform (if needed)
+        run: |
+          xcodebuild -downloadPlatform iOS || echo "downloadPlatform skipped (already installed or not supported)"
 
       - uses: actions/setup-dotnet@v4
         with:
