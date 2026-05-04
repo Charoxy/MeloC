@@ -1,0 +1,74 @@
+name: Build iOS IPA (unsigned)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    name: Build iOS IPA
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build Ryujinx.Headless.SDL2.dylib (ios-arm64)
+        run: |
+          dotnet publish -c Release -r ios-arm64 \
+            -p:ExtraDefineConstants=DISABLE_UPDATER \
+            src/Ryujinx.Headless.SDL2 --self-contained true
+
+      - name: Place dylib for Xcode
+        run: |
+          mkdir -p "src/MeloNX/MeloNX/Dependencies/Dynamic Libraries"
+          cp src/Ryujinx.Headless.SDL2/bin/Release/net8.0/ios-arm64/native/Ryujinx.Headless.SDL2.dylib \
+             "src/MeloNX/MeloNX/Dependencies/Dynamic Libraries/Ryujinx.Headless.SDL2.dylib"
+
+      - name: Build MeloNX.app (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project src/MeloNX/MeloNX.xcodeproj \
+            -scheme MeloNX \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: Package .ipa
+        run: |
+          APP_PATH="build/Build/Products/Release-iphoneos/MeloNX.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "MeloNX.app not found at $APP_PATH"
+            ls -R build/Build/Products || true
+            exit 1
+          fi
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qr MeloNX-unsigned.ipa Payload
+          rm -rf Payload
+          ls -lh MeloNX-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeloNX-unsigned-ipa
+          path: MeloNX-unsigned.ipa
+          if-no-files-found: error
