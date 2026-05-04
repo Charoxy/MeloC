@@ -127,3 +127,29 @@ public func melonx_get_text_input_result() -> UnsafeMutablePointer<CChar>? {
 public func melonx_clear_text_input() {
     TextInputBridge.shared.reset()
 }
+
+// Forces the linker (and dyld) to retain the @_cdecl symbols so they remain
+// visible to Ryujinx.Headless.SDL2.dylib through DllImport("__Internal").
+// Without an explicit reference inside the main app binary, dead-stripping or
+// hidden visibility can drop them.
+public enum TextInputBridgeKeepalive {
+    @inline(never)
+    public static func touch() {
+        var sink: [UnsafeRawPointer] = []
+        sink.append(unsafeBitCast(
+            melonx_show_text_input as @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void,
+            to: UnsafeRawPointer.self))
+        sink.append(unsafeBitCast(
+            melonx_get_text_input_state as @convention(c) () -> Int32,
+            to: UnsafeRawPointer.self))
+        sink.append(unsafeBitCast(
+            melonx_get_text_input_result as @convention(c) () -> UnsafeMutablePointer<CChar>?,
+            to: UnsafeRawPointer.self))
+        sink.append(unsafeBitCast(
+            melonx_clear_text_input as @convention(c) () -> Void,
+            to: UnsafeRawPointer.self))
+        if sink.isEmpty {
+            print("text input bridge keepalive lost (unreachable)")
+        }
+    }
+}

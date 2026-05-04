@@ -40,15 +40,23 @@ namespace Ryujinx.Headless.SDL2
             {
                 melonx_clear_text_input();
                 melonx_show_text_input(title ?? string.Empty, message ?? string.Empty, placeholder ?? string.Empty);
+                Console.WriteLine("[AlertHelper] Using Swift native text input bridge");
             }
-            catch (DllNotFoundException)
+            catch (DllNotFoundException ex)
             {
-                // Fallback to legacy framework if Swift symbols aren't available (older builds).
+                Console.WriteLine($"[AlertHelper] Swift bridge not found (DllNotFound: {ex.Message}), falling back to legacy framework");
                 LegacyShowAlertWithTextInput(title, message, placeholder, onTextEntered);
                 return;
             }
-            catch (EntryPointNotFoundException)
+            catch (EntryPointNotFoundException ex)
             {
+                Console.WriteLine($"[AlertHelper] Swift bridge symbols missing (EntryPointNotFound: {ex.Message}), falling back to legacy framework");
+                LegacyShowAlertWithTextInput(title, message, placeholder, onTextEntered);
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AlertHelper] Swift bridge call failed ({ex.GetType().Name}: {ex.Message}), falling back to legacy framework");
                 LegacyShowAlertWithTextInput(title, message, placeholder, onTextEntered);
                 return;
             }

@@ -46,6 +46,10 @@ struct MeloNXApp: View {
         SDL_iPhoneSetEventPump(SDL_TRUE)
         SDL_Init(SDL_INIT_EVENTS | SDL_INIT_AUDIO)
         setupEnvironment()
+
+        // Force linker to retain the @_cdecl text input bridge symbols
+        // so they are reachable from Ryujinx.Headless.SDL2.dylib via dlsym(RTLD_DEFAULT, ...).
+        TextInputBridgeKeepalive.touch()
     }
     
     var body: some View {
