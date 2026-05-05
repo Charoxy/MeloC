@@ -20,39 +20,21 @@ namespace Ryujinx.Headless.SDL2
         [DllImport("RyujinxHelper.framework/RyujinxHelper", CallingConvention = CallingConvention.Cdecl)]
         private static extern void clearKeyboardInput();
 
-        // Swift-side native keyboard (resolved by dyld at runtime to symbols exported by MeloNX.app).
-        [DllImport("__Internal", EntryPoint = "melonx_show_text_input", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void melonx_show_text_input(string title, string message, string placeholder);
-
-        [DllImport("__Internal", EntryPoint = "melonx_get_text_input_state", CallingConvention = CallingConvention.Cdecl)]
-        private static extern int melonx_get_text_input_state();
-
-        [DllImport("__Internal", EntryPoint = "melonx_get_text_input_result", CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr melonx_get_text_input_result();
-
-        [DllImport("__Internal", EntryPoint = "melonx_clear_text_input", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void melonx_clear_text_input();
-
         // states: 0 = pending, 1 = accepted, 2 = cancelled
         public static void ShowAlertWithTextInput(string title, string message, string placeholder, Action<string> onTextEntered)
         {
+            if (!iOSTextInputBridge.IsAvailable)
+            {
+                Console.WriteLine($"[AlertHelper] Swift bridge unavailable ({iOSTextInputBridge.LastError}), falling back to legacy framework");
+                LegacyShowAlertWithTextInput(title, message, placeholder, onTextEntered);
+                return;
+            }
+
             try
             {
-                melonx_clear_text_input();
-                melonx_show_text_input(title ?? string.Empty, message ?? string.Empty, placeholder ?? string.Empty);
+                iOSTextInputBridge.Clear();
+                iOSTextInputBridge.Show(title, message, placeholder);
                 Console.WriteLine("[AlertHelper] Using Swift native text input bridge");
-            }
-            catch (DllNotFoundException ex)
-            {
-                Console.WriteLine($"[AlertHelper] Swift bridge not found (DllNotFound: {ex.Message}), falling back to legacy framework");
-                LegacyShowAlertWithTextInput(title, message, placeholder, onTextEntered);
-                return;
-            }
-            catch (EntryPointNotFoundException ex)
-            {
-                Console.WriteLine($"[AlertHelper] Swift bridge symbols missing (EntryPointNotFound: {ex.Message}), falling back to legacy framework");
-                LegacyShowAlertWithTextInput(title, message, placeholder, onTextEntered);
-                return;
             }
             catch (Exception ex)
             {
@@ -67,20 +49,21 @@ namespace Ryujinx.Headless.SDL2
                 {
                     Thread.Sleep(100);
 
-                    int state = melonx_get_text_input_state();
+                    int state = iOSTextInputBridge.GetState();
                     if (state == 0) continue;
+                    if (state < 0) return;
 
                     string result = string.Empty;
                     if (state == 1)
                     {
-                        IntPtr ptr = melonx_get_text_input_result();
+                        IntPtr ptr = iOSTextInputBridge.GetResultPointer();
                         if (ptr != IntPtr.Zero)
                         {
                             result = Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
                         }
                     }
 
-                    melonx_clear_text_input();
+                    iOSTextInputBridge.Clear();
                     onTextEntered?.Invoke(result);
                     return;
                 }

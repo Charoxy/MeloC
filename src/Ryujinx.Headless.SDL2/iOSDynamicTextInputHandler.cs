@@ -13,18 +13,6 @@ namespace Ryujinx.Headless.SDL2
     /// </summary>
     internal class iOSDynamicTextInputHandler : IDynamicTextInputHandler
     {
-        [DllImport("__Internal", EntryPoint = "melonx_show_text_input", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void melonx_show_text_input(string title, string message, string placeholder);
-
-        [DllImport("__Internal", EntryPoint = "melonx_get_text_input_state", CallingConvention = CallingConvention.Cdecl)]
-        private static extern int melonx_get_text_input_state();
-
-        [DllImport("__Internal", EntryPoint = "melonx_get_text_input_result", CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr melonx_get_text_input_result();
-
-        [DllImport("__Internal", EntryPoint = "melonx_clear_text_input", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void melonx_clear_text_input();
-
         private bool _canProcessInput;
         private int _alertInFlight; // 0 = idle, 1 = presenting
 
@@ -48,16 +36,24 @@ namespace Ryujinx.Headless.SDL2
 
         private void PresentAndPoll()
         {
+            if (!iOSTextInputBridge.IsAvailable)
+            {
+                Console.WriteLine($"[iOSDynamicTextInputHandler] Swift bridge unavailable: {iOSTextInputBridge.LastError}");
+                Volatile.Write(ref _alertInFlight, 0);
+                SubmitEvent?.Invoke(false);
+                return;
+            }
+
             try
             {
-                melonx_clear_text_input();
-                melonx_show_text_input("Software Keyboard", string.Empty, string.Empty);
+                iOSTextInputBridge.Clear();
+                iOSTextInputBridge.Show("Software Keyboard", string.Empty, string.Empty);
+                Console.WriteLine("[iOSDynamicTextInputHandler] presented native UIAlertController");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[iOSDynamicTextInputHandler] Failed to call Swift bridge: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[iOSDynamicTextInputHandler] Show failed: {ex.GetType().Name}: {ex.Message}");
                 Volatile.Write(ref _alertInFlight, 0);
-                // Fall back to firing accept with empty string so the game doesn't soft-lock.
                 SubmitEvent?.Invoke(false);
                 return;
             }
@@ -68,11 +64,9 @@ namespace Ryujinx.Headless.SDL2
                 {
                     Thread.Sleep(100);
 
-                    int state;
-                    try { state = melonx_get_text_input_state(); }
-                    catch { Volatile.Write(ref _alertInFlight, 0); return; }
-
+                    int state = iOSTextInputBridge.GetState();
                     if (state == 0) continue;
+                    if (state < 0) { Volatile.Write(ref _alertInFlight, 0); return; }
 
                     string text = string.Empty;
                     bool accepted = state == 1;
@@ -80,7 +74,7 @@ namespace Ryujinx.Headless.SDL2
                     {
                         try
                         {
-                            IntPtr ptr = melonx_get_text_input_result();
+                            IntPtr ptr = iOSTextInputBridge.GetResultPointer();
                             if (ptr != IntPtr.Zero)
                             {
                                 text = Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
@@ -89,7 +83,7 @@ namespace Ryujinx.Headless.SDL2
                         catch { /* ignore */ }
                     }
 
-                    try { melonx_clear_text_input(); } catch { }
+                    try { iOSTextInputBridge.Clear(); } catch { }
 
                     int cursor = text.Length;
                     TextChangedEvent?.Invoke(text, cursor, cursor, false);
