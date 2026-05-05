@@ -104,6 +104,7 @@ namespace Ryujinx.HLE.HOS.Applets
                         _dynamicTextInputHandler = _device.UIHandler.CreateDynamicTextInputHandler();
                         _dynamicTextInputHandler.TextChangedEvent += HandleTextChangedEvent;
                         _dynamicTextInputHandler.KeyPressedEvent += HandleKeyPressedEvent;
+                        _dynamicTextInputHandler.SubmitEvent += HandleSubmitEvent;
 
                         _npads = new NpadReader(_device);
                         _npads.NpadButtonDownEvent += HandleNpadButtonDownEvent;
@@ -542,6 +543,7 @@ namespace Ryujinx.HLE.HOS.Applets
             {
                 _dynamicTextInputHandler.TextChangedEvent -= HandleTextChangedEvent;
                 _dynamicTextInputHandler.KeyPressedEvent -= HandleKeyPressedEvent;
+                _dynamicTextInputHandler.SubmitEvent -= HandleSubmitEvent;
                 _dynamicTextInputHandler.Dispose();
                 _dynamicTextInputHandler = null;
             }
@@ -551,6 +553,20 @@ namespace Ryujinx.HLE.HOS.Applets
                 _npads.NpadButtonDownEvent -= HandleNpadButtonDownEvent;
                 _npads.NpadButtonUpEvent -= HandleNpadButtonUpEvent;
                 _npads = null;
+            }
+        }
+
+        private void HandleSubmitEvent(bool accept)
+        {
+            lock (_lock)
+            {
+                if (!IsKeyboardActive())
+                {
+                    return;
+                }
+
+                KeyboardResult result = accept ? KeyboardResult.Accept : KeyboardResult.Cancel;
+                PushUpdatedState(_textValue, _cursorBegin, result);
             }
         }
 

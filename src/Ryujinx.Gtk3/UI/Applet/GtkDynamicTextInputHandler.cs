@@ -20,6 +20,7 @@ namespace Ryujinx.UI.Applet
         public event DynamicTextChangedHandler TextChangedEvent;
         public event KeyPressedHandler KeyPressedEvent;
         public event KeyReleasedHandler KeyReleasedEvent;
+        public event System.Action<bool> SubmitEvent { add { } remove { } }
 
         public bool TextProcessingEnabled
         {

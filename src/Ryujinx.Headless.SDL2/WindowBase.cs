@@ -532,6 +532,10 @@ namespace Ryujinx.Headless.SDL2
 
         public IDynamicTextInputHandler CreateDynamicTextInputHandler()
         {
+            if (OperatingSystem.IsIOS())
+            {
+                return new iOSDynamicTextInputHandler();
+            }
             return new HeadlessDynamicTextInputHandler();
         }
 

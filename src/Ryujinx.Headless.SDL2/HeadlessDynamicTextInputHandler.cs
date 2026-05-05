@@ -14,6 +14,7 @@ namespace Ryujinx.Headless.SDL2
         public event DynamicTextChangedHandler TextChangedEvent;
         public event KeyPressedHandler KeyPressedEvent { add { } remove { } }
         public event KeyReleasedHandler KeyReleasedEvent { add { } remove { } }
+        public event System.Action<bool> SubmitEvent { add { } remove { } }
 
         public bool TextProcessingEnabled
         {

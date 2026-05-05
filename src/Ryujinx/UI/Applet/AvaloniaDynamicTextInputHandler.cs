@@ -115,6 +115,7 @@ namespace Ryujinx.Ava.UI.Applet
         public event DynamicTextChangedHandler TextChangedEvent;
         public event KeyPressedHandler KeyPressedEvent;
         public event KeyReleasedHandler KeyReleasedEvent;
+        public event Action<bool> SubmitEvent { add { } remove { } }
 
         public void Dispose()
         {
